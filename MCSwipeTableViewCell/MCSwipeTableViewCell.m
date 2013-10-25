@@ -20,6 +20,8 @@ static NSTimeInterval const kMCDurationHightLimit = 0.1; // Highest duration whe
 
 @property (nonatomic, assign) MCSwipeTableViewCellDirection direction;
 @property (nonatomic, assign) CGFloat currentPercentage;
+@property (nonatomic, assign) CGPoint startLocation; // For the top portion which doesn't response UIPanGestureRecognize normally in iOS7
+@property (nonatomic, assign) CGPoint currentLocation; // For the top portion which doesn't response UIPanGestureRecognize normally in iOS7
 
 @property (nonatomic, strong) UIPanGestureRecognizer *panGestureRecognizer;
 @property (nonatomic, strong) UIImageView *slidingImageView;
@@ -232,6 +234,48 @@ secondStateIconName:(NSString *)secondIconName
         }
     }
     return NO;
+}
+
+#pragma mark - Touch Events
+- (void)touchesBegan:(NSSet *)touches
+           withEvent:(UIEvent *)event
+{
+    if (!_shouldDrag) return;
+    
+    _startLocation = [[touches anyObject] locationInView:self];
+    _currentLocation = CGPointZero;
+}
+
+- (void)touchesMoved:(NSSet *)touches
+           withEvent:(UIEvent *)event
+{
+    if (!_shouldDrag) return;
+    
+    _currentLocation = [[touches anyObject] locationInView:self];
+    CGFloat marginX = (_currentLocation.x - _startLocation.x);
+    CGFloat marginY = (_currentLocation.y - _startLocation.y);
+    
+    if (fabsf(marginX) > fabsf(marginY)) {
+        _isDragging = YES;
+        
+        _currentPercentage = marginX / self.contentView.bounds.size.width;
+        _direction = [self directionWithPercentage:_currentPercentage];
+        
+        CGPoint center = {self.center.x + marginX, self.contentView.center.y};
+        [self.contentView setCenter:center];
+        [self animateWithOffset:CGRectGetMinX(self.contentView.frame)];
+    }
+    return;
+}
+
+- (void)touchesEnded:(NSSet *)touches
+           withEvent:(UIEvent *)event
+{
+    _isDragging = NO;
+    
+    if (!CGPointEqualToPoint(_currentLocation, CGPointZero)) {
+        [self bounceToOrigin];
+    }
 }
 
 #pragma mark - Utils
